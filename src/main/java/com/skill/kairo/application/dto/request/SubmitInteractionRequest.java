@@ -1,5 +1,9 @@
 package com.skill.kairo.application.dto.request;
 
-public class SubmitInteractionRequest {
-    
-}
+import java.util.UUID;
+
+public record SubmitInteractionRequest(
+    UUID userId,
+    UUID challengeId,
+    String userInput
+) {}
