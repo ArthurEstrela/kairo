@@ -1,10 +1,11 @@
 package com.skill.kairo.application.service;
 
-import com.skill.kairo.application.dto.request.SubmitInteractionRequest;
+import com.skill.kairo.application.command.EvaluateInteractionCommand;
 import com.skill.kairo.application.dto.response.InteractionResultResponse;
 import com.skill.kairo.application.port.AIPort;
 import com.skill.kairo.application.port.EventPublisherPort;
 import com.skill.kairo.application.usecase.EvaluateInteractionUseCase;
+import com.skill.kairo.domain.event.ChallengeCompletedEvent;
 import com.skill.kairo.domain.event.DomainEvent;
 import com.skill.kairo.domain.model.challenge.Challenge;
 import com.skill.kairo.domain.model.challenge.Interaction;
@@ -14,6 +15,7 @@ import com.skill.kairo.domain.repository.ChallengeRepository;
 import com.skill.kairo.domain.repository.GamificationRepository;
 import com.skill.kairo.domain.repository.InteractionRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,14 +27,12 @@ public class EvaluateInteractionService implements EvaluateInteractionUseCase {
     private final AIPort aiPort;
     private final EventPublisherPort eventPublisher;
 
-    // Injeção de dependências via construtor (limpo e sem anotações de framework)
     public EvaluateInteractionService(
             ChallengeRepository challengeRepository,
             GamificationRepository gamificationRepository,
             InteractionRepository interactionRepository,
             AIPort aiPort,
             EventPublisherPort eventPublisher) {
-        
         this.challengeRepository = challengeRepository;
         this.gamificationRepository = gamificationRepository;
         this.interactionRepository = interactionRepository;
@@ -41,51 +41,55 @@ public class EvaluateInteractionService implements EvaluateInteractionUseCase {
     }
 
     @Override
-    public InteractionResultResponse execute(SubmitInteractionRequest request) {
-        
-        // 1. Recuperar os Agregados da Base de Dados
-        Challenge challenge = challengeRepository.findById(request.challengeId())
+    public InteractionResultResponse execute(EvaluateInteractionCommand command) {
+
+        // 1. Recuperar os Agregados
+        Challenge challenge = challengeRepository.findById(command.challengeId())
                 .orElseThrow(() -> new IllegalArgumentException("Desafio não encontrado."));
-                
-        GamificationProfile profile = gamificationRepository.findByUserId(request.userId())
+
+        GamificationProfile profile = gamificationRepository.findByUserId(command.userId())
                 .orElseThrow(() -> new IllegalArgumentException("Perfil de gamificação não encontrado."));
 
-        // 2. Comunicar com a IA (O Agregado Challenge apenas fornece o prompt)
         String systemPrompt = challenge.generatePrompt();
-        Score score = aiPort.evaluateInteraction(systemPrompt, request.userInput());
 
-        // 3. Registar o histórico da interação
-        Interaction interaction = new Interaction(
-                UUID.randomUUID(), 
-                profile.getUserId(), 
-                challenge.getId(), 
-                request.userInput(), 
-                "Resposta avaliada pela IA", // Posteriormente, a IA pode devolver um texto detalhado
+        // 2. Se o aiResponse não veio do WebSocket (chamada REST), gerá-lo agora
+        String aiResponse = (command.aiResponse() != null && !command.aiResponse().isBlank())
+                ? command.aiResponse()
+                : aiPort.generateResponse(systemPrompt, command.userInput());
+
+        // 3. Avaliar a qualidade da resposta do utilizador
+        Score score = aiPort.evaluateInteraction(systemPrompt, command.userInput());
+
+        // 4. Registar o histórico da interação com a resposta REAL da IA
+        interactionRepository.save(new Interaction(
+                UUID.randomUUID(),
+                profile.getUserId(),
+                challenge.getId(),
+                command.userInput(),
+                aiResponse,
                 score
-        );
-        interactionRepository.save(interaction);
+        ));
 
-        // 4. Aplicar a Regra de Negócio (A Gamificação real)
+        // 5. Aplicar a Regra de Negócio de Gamificação
         String feedback;
         if (score.value() >= 70) {
-            // Sucesso! Ganha o XP do desafio e mantém a ofensiva (streak)
             profile.awardXp(challenge.getXpReward());
             profile.maintainStreak();
             feedback = "Desafio superado com sucesso!";
         } else {
-            // Falha! Perde uma vida e a ofensiva volta a zero
             profile.failChallenge();
             feedback = "A pontuação não foi suficiente. Tenta novamente!";
         }
 
-        // 5. Guardar o novo estado no Repositório
+        // 6. Guardar o novo estado
         gamificationRepository.save(profile);
 
-        // 6. Publicar os Eventos de Domínio (O pulo do gato do DDD!)
-        List<DomainEvent> eventsToPublish = profile.pullDomainEvents();
-        eventsToPublish.forEach(eventPublisher::publish);
+        // 7. Publicar todos os Eventos de Domínio
+        List<DomainEvent> events = new ArrayList<>(profile.pullDomainEvents());
+        events.add(new ChallengeCompletedEvent(profile.getUserId(), challenge.getId(), score.value()));
+        events.forEach(eventPublisher::publish);
 
-        // 7. Devolver a resposta final para o ecrã do utilizador
+        // 8. Devolver a resposta final
         return new InteractionResultResponse(
                 score.value(),
                 profile.getCurrentXp(),

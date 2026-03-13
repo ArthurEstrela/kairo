@@ -4,14 +4,34 @@ import com.skill.kairo.domain.exception.InvalidChallengeConfigException;
 import com.skill.kairo.domain.exception.OutOfLivesException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.net.URI;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    // 0. Erros de validação de @Valid nos @RequestBody (campo a campo)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ProblemDetail handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problemDetail.setTitle("Dados de Entrada Inválidos");
+        problemDetail.setProperty("timestamp", Instant.now());
+
+        List<Map<String, String>> errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(fe -> Map.of(
+                        "field", fe.getField(),
+                        "message", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "Valor inválido"
+                ))
+                .toList();
+        problemDetail.setProperty("errors", errors);
+        return problemDetail;
+    }
 
     // 1. Apanha a nossa regra de negócio de "Sem Vidas"
     @ExceptionHandler(OutOfLivesException.class)

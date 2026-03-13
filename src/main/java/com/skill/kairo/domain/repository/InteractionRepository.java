@@ -6,10 +6,9 @@ import java.util.List;
 import java.util.UUID;
 
 public interface InteractionRepository {
-    
-    // Regista o histórico da interação com a IA
+
     void save(Interaction interaction);
-    
-    // Permite recuperar o histórico de um utilizador (para mostrar no ecrã de perfil)
-    List<Interaction> findByUserId(UUID userId);
+
+    // page é zero-based; size é o número de registos por página
+    List<Interaction> findByUserId(UUID userId, int page, int size);
 }

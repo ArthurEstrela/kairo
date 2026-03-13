@@ -1,6 +1,5 @@
 package com.skill.kairo.infrastructure.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skill.kairo.application.port.AIPort;
 import com.skill.kairo.application.port.EventPublisherPort;
 import com.skill.kairo.application.port.JwtPort;
@@ -61,9 +60,8 @@ public class BeansConfig {
     ProcessSubscriptionUseCase processSubscriptionUseCase(
             PaymentPort paymentPort,
             SubscriptionRepository subscriptionRepository,
-            GamificationRepository gamificationRepository,
-            ObjectMapper objectMapper) {
+            GamificationRepository gamificationRepository) {
         return new ProcessSubscriptionService(
-                paymentPort, subscriptionRepository, gamificationRepository, objectMapper);
+                paymentPort, subscriptionRepository, gamificationRepository);
     }
 }
