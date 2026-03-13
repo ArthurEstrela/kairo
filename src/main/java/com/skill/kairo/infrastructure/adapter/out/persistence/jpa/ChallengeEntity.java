@@ -1,5 +1,6 @@
 package com.skill.kairo.infrastructure.adapter.out.persistence.jpa;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -8,25 +9,26 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "gamification_profiles")
+@Table(name = "challenges")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class GamificationProfileEntity {
+public class ChallengeEntity {
 
     @Id
     private UUID id;
 
-    private UUID userId;
-    private int currentXp;
-    private int currentLives;
-    private int maxLives;
-    private int currentStreak;
-    private String tier;
-    private Instant lastLifeLostAt; // nullable
+    private UUID skillId;
+    private String title;
+    private int xpReward;
+    private int levelOrder;
+
+    private String configType;  // 'ROLEPLAY' ou 'QUIZ'
+
+    @Column(columnDefinition = "TEXT")
+    private String configData;  // JSON com os detalhes
 }

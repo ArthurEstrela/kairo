@@ -12,21 +12,20 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "gamification_profiles")
+@Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class GamificationProfileEntity {
+public class UserEntity {
 
     @Id
     private UUID id;
 
-    private UUID userId;
-    private int currentXp;
-    private int currentLives;
-    private int maxLives;
-    private int currentStreak;
-    private String tier;
-    private Instant lastLifeLostAt; // nullable
+    private UUID companyId;
+
+    private String email;
+    private String passwordHash;
+    private String name;
+    private Instant createdAt;
 }

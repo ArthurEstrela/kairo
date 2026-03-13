@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class GamificationMapper {
 
-    // Transforma JPA Entity -> Domínio Puro
     public GamificationProfile toDomain(GamificationProfileEntity entity) {
         return new GamificationProfile(
                 entity.getId(),
@@ -17,11 +16,11 @@ public class GamificationMapper {
                 entity.getCurrentLives(),
                 entity.getMaxLives(),
                 entity.getCurrentStreak(),
-                LeagueTier.valueOf(entity.getTier())
+                LeagueTier.valueOf(entity.getTier()),
+                entity.getLastLifeLostAt()
         );
     }
 
-    // Transforma Domínio Puro -> JPA Entity
     public GamificationProfileEntity toEntity(GamificationProfile domain) {
         return new GamificationProfileEntity(
                 domain.getId(),
@@ -30,7 +29,8 @@ public class GamificationMapper {
                 domain.getCurrentLives(),
                 domain.getMaxLives(),
                 domain.getCurrentStreak(),
-                domain.getTier().name()
+                domain.getTier().name(),
+                domain.getLastLifeLostAt()
         );
     }
 }

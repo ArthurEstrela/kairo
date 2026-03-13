@@ -6,6 +6,8 @@ import com.skill.kairo.infrastructure.adapter.out.persistence.jpa.SpringDataGami
 import com.skill.kairo.infrastructure.adapter.out.persistence.mapper.GamificationMapper;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,13 +24,19 @@ public class JpaGamificationRepositoryAdapter implements GamificationRepository 
 
     @Override
     public Optional<GamificationProfile> findByUserId(UUID userId) {
-        return springDataRepository.findByUserId(userId)
-                .map(mapper::toDomain); // Se encontrar, traduz para o Domínio
+        return springDataRepository.findByUserId(userId).map(mapper::toDomain);
     }
 
     @Override
     public void save(GamificationProfile profile) {
-        var entity = mapper.toEntity(profile); // Traduz do Domínio para JPA
-        springDataRepository.save(entity);     // O Spring guarda na base de dados
+        springDataRepository.save(mapper.toEntity(profile));
+    }
+
+    @Override
+    public List<GamificationProfile> findAllWithLivesLostBefore(Instant threshold) {
+        return springDataRepository.findAllWithLivesLostBefore(threshold)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 }
