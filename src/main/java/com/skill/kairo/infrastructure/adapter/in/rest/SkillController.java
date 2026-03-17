@@ -54,13 +54,16 @@ public class SkillController {
             case RoleplayConfig ignored -> "ROLEPLAY";
             case QuizConfig ignored -> "QUIZ";
         };
+        int maxTurns = (challenge.getConfig() instanceof RoleplayConfig rc) ? rc.maxTurns() : 0;
         return new ChallengeResponse(
                 challenge.getId(),
                 challenge.getSkillId(),
                 challenge.getTitle(),
                 challenge.getXpReward(),
                 challenge.getLevelOrder(),
-                type
+                type,
+                maxTurns,
+                null
         );
     }
 }
