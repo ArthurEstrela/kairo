@@ -215,7 +215,11 @@ public class GeminiAdapter implements AIPort {
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
-            return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new RuntimeException("Gemini API error " + response.statusCode() + ": " + response.body());
+            }
+            return response;
         } catch (Exception e) {
             throw new RuntimeException("Erro na chamada ao Gemini", e);
         }
