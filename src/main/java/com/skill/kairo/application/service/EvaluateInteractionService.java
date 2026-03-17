@@ -9,6 +9,7 @@ import com.skill.kairo.domain.event.ChallengeCompletedEvent;
 import com.skill.kairo.domain.event.DomainEvent;
 import com.skill.kairo.domain.model.challenge.Challenge;
 import com.skill.kairo.domain.model.challenge.Interaction;
+import com.skill.kairo.domain.model.challenge.InteractionScore;
 import com.skill.kairo.domain.model.challenge.Score;
 import com.skill.kairo.domain.model.gamification.GamificationProfile;
 import com.skill.kairo.domain.repository.ChallengeRepository;
@@ -58,7 +59,9 @@ public class EvaluateInteractionService implements EvaluateInteractionUseCase {
                 : aiPort.generateResponse(systemPrompt, command.userInput());
 
         // 3. Avaliar a qualidade da resposta do utilizador
-        Score score = aiPort.evaluateInteraction(systemPrompt, command.userInput());
+        InteractionScore interactionScore = aiPort.evaluateInteraction(systemPrompt,
+                List.of("", command.userInput())); // index 0 = AI (empty opening), index 1 = user input
+        Score score = new Score(interactionScore.score());
 
         // 4. Registar o histórico da interação com a resposta REAL da IA
         interactionRepository.save(new Interaction(

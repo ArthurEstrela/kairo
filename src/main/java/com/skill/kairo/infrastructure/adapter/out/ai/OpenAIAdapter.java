@@ -3,7 +3,7 @@ package com.skill.kairo.infrastructure.adapter.out.ai;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skill.kairo.application.port.AIPort;
-import com.skill.kairo.domain.model.challenge.Score;
+import com.skill.kairo.domain.model.challenge.InteractionScore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
@@ -93,16 +93,13 @@ public class OpenAIAdapter implements AIPort {
     }
 
     @Override
-    public Score evaluateInteraction(String systemPrompt, String userInput) {
-        String evaluatorPrompt = buildEvaluatorPrompt(systemPrompt, userInput);
-        String body = buildRequestBody(evaluatorPrompt, "Avalia a resposta acima.", false);
-        String rawResponse = restClient.post()
-                .body(body)
-                .retrieve()
-                .body(String.class);
+    public String generateStructuredTrack(String prompt) {
+        throw new UnsupportedOperationException("OpenAI structured track generation not implemented");
+    }
 
-        String content = extractContent(rawResponse);
-        return new Score(parseScore(content));
+    @Override
+    public InteractionScore evaluateInteraction(String systemPrompt, List<String> conversationHistory) {
+        throw new UnsupportedOperationException("OpenAI multi-turn evaluation not implemented");
     }
 
     private String buildRequestBody(String systemPrompt, String userMessage, boolean stream) {
@@ -121,43 +118,12 @@ public class OpenAIAdapter implements AIPort {
         }
     }
 
-    private String buildEvaluatorPrompt(String challengeSystemPrompt, String userInput) {
-        return """
-                És um avaliador rigoroso de soft skills. O utilizador participou num desafio de roleplay.
-
-                Contexto do desafio:
-                %s
-
-                A resposta do utilizador foi:
-                "%s"
-
-                Avalia a qualidade desta resposta numa escala de 0 a 100 com base em:
-                - Clareza e persuasão da argumentação
-                - Cumprimento do objetivo do desafio
-                - Uso de técnicas adequadas de comunicação/negociação
-                - Evitação das palavras proibidas (se aplicável)
-
-                Responde APENAS com um número inteiro de 0 a 100. Sem texto adicional.
-                """.formatted(challengeSystemPrompt, userInput);
-    }
-
     private String extractContent(String rawResponse) {
         try {
             JsonNode root = objectMapper.readTree(rawResponse);
             return root.path("choices").path(0).path("message").path("content").asText();
         } catch (Exception e) {
             throw new RuntimeException("Erro ao processar resposta da OpenAI", e);
-        }
-    }
-
-    private int parseScore(String content) {
-        try {
-            String cleaned = content.trim().replaceAll("[^0-9]", "");
-            if (cleaned.isEmpty()) return 50;
-            int score = Integer.parseInt(cleaned);
-            return Math.min(100, Math.max(0, score));
-        } catch (NumberFormatException e) {
-            return 50;
         }
     }
 }

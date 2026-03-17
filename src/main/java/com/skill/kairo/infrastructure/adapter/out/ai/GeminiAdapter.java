@@ -3,7 +3,7 @@ package com.skill.kairo.infrastructure.adapter.out.ai;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skill.kairo.application.port.AIPort;
-import com.skill.kairo.domain.model.challenge.Score;
+import com.skill.kairo.domain.model.challenge.InteractionScore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -92,14 +92,77 @@ public class GeminiAdapter implements AIPort {
     }
 
     @Override
-    public Score evaluateInteraction(String systemPrompt, String userInput) {
-        String evaluatorPrompt = buildEvaluatorPrompt(systemPrompt, userInput);
-        String url  = BASE_URL + ":generateContent?key=" + apiKey;
-        String body = buildRequestBody(evaluatorPrompt, "Avalia a resposta acima.");
+    public String generateStructuredTrack(String prompt) {
+        String url = BASE_URL + ":generateContent?key=" + apiKey;
+        try {
+            Map<String, Object> body = Map.of(
+                "contents", List.of(
+                    Map.of("role", "user", "parts", List.of(Map.of("text", prompt)))
+                ),
+                "generationConfig", Map.of(
+                    "temperature", 0.7,
+                    "maxOutputTokens", 2048,
+                    "responseMimeType", "application/json"
+                )
+            );
+            String requestBody = objectMapper.writeValueAsString(body);
+            HttpResponse<String> response = send(url, requestBody);
+            String text = extractText(response.body());
+            if (text == null || text.isBlank()) {
+                throw new RuntimeException("Gemini returned empty JSON for track generation");
+            }
+            return text;
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao gerar trilha estruturada: " + e.getMessage(), e);
+        }
+    }
 
+    @Override
+    public InteractionScore evaluateInteraction(String systemPrompt, List<String> conversationHistory) {
+        String historyText = buildHistoryText(conversationHistory);
+        String evaluatorPrompt = """
+            És um avaliador rigoroso de soft skills. O utilizador participou num roleplay multi-turno.
+
+            Sistema do desafio:
+            %s
+
+            Conversa completa (alternando: IA, utilizador, IA, utilizador, ...):
+            %s
+
+            Avalia o desempenho do utilizador de 0 a 100 baseado em:
+            - Cumprimento do objetivo
+            - Qualidade da comunicação
+            - Ausência de palavras proibidas (se aplicável)
+
+            Responde APENAS com JSON: {"score": <0-100>, "feedback": "<1 frase>"}
+            """.formatted(systemPrompt, historyText);
+
+        String url = BASE_URL + ":generateContent?key=" + apiKey;
+        String body = buildRequestBody(evaluatorPrompt, "Avalia a conversa acima.");
         HttpResponse<String> response = send(url, body);
         String content = extractText(response.body());
-        return new Score(parseScore(content));
+        return parseInteractionScore(content);
+    }
+
+    private String buildHistoryText(List<String> history) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < history.size(); i++) {
+            sb.append(i % 2 == 0 ? "IA: " : "Utilizador: ").append(history.get(i)).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private InteractionScore parseInteractionScore(String content) {
+        try {
+            JsonNode root = objectMapper.readTree(content);
+            int score = Math.min(100, Math.max(0, root.path("score").asInt(50)));
+            String feedback = root.path("feedback").asText("");
+            return new InteractionScore(score, feedback.isBlank() ? "Sem feedback" : feedback);
+        } catch (Exception e) {
+            return new InteractionScore(50, "Sem feedback");
+        }
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -131,26 +194,6 @@ public class GeminiAdapter implements AIPort {
         }
     }
 
-    private String buildEvaluatorPrompt(String challengeSystemPrompt, String userInput) {
-        return """
-                És um avaliador rigoroso de soft skills. O utilizador participou num desafio de roleplay.
-
-                Contexto do desafio:
-                %s
-
-                A resposta do utilizador foi:
-                "%s"
-
-                Avalia a qualidade desta resposta numa escala de 0 a 100 com base em:
-                - Clareza e persuasão da argumentação
-                - Cumprimento do objetivo do desafio
-                - Uso de técnicas adequadas de comunicação/negociação
-                - Evitação das palavras proibidas (se aplicável)
-
-                Responde APENAS com um número inteiro de 0 a 100. Sem texto adicional.
-                """.formatted(challengeSystemPrompt, userInput);
-    }
-
     /**
      * Extrai o texto do campo candidates[0].content.parts[0].text
      */
@@ -178,13 +221,4 @@ public class GeminiAdapter implements AIPort {
         }
     }
 
-    private int parseScore(String content) {
-        try {
-            String cleaned = content.trim().replaceAll("[^0-9]", "");
-            if (cleaned.isEmpty()) return 50;
-            return Math.min(100, Math.max(0, Integer.parseInt(cleaned)));
-        } catch (NumberFormatException e) {
-            return 50;
-        }
-    }
 }
