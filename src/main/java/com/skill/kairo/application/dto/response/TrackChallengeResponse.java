@@ -1,14 +1,11 @@
 package com.skill.kairo.application.dto.response;
 
-import java.util.UUID;
-
-public record ChallengeResponse(
-        UUID id,
-        UUID skillId,
+public record TrackChallengeResponse(
+        String id,
         String title,
         int xpReward,
         int levelOrder,
-        String type,
         int maxTurns,
-        String status
+        String status,
+        int bestScore
 ) {}
