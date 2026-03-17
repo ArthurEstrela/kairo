@@ -64,7 +64,7 @@ public class JpaSkillRepositoryAdapter implements SkillRepository {
         e.setDifficultyLevel(s.difficultyLevel());
         e.setCreatedByUserId(s.createdByUserId());
         e.setPublic(s.isPublic());
-        e.setCreatedAt(java.time.Instant.now());
+        // createdAt is managed by @CreationTimestamp on SkillEntity — do not set manually
         return e;
     }
 }

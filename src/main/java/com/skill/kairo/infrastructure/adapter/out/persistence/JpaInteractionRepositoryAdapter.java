@@ -39,27 +39,25 @@ public class JpaInteractionRepositoryAdapter implements InteractionRepository {
         return springDataRepository
                 .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size))
                 .stream()
-                .map(entity -> new Interaction(
-                        entity.getId(),
-                        entity.getUserId(),
-                        entity.getChallengeId(),
-                        entity.getUserInput(),
-                        entity.getAiResponse(),
-                        new Score(entity.getScore())
-                ))
+                .map(this::toDomain)
                 .toList();
     }
 
     @Override
     public Optional<Interaction> findByIdAndUserIdAndChallengeId(UUID id, UUID userId, UUID challengeId) {
         return springDataRepository.findByIdAndUserIdAndChallengeId(id, userId, challengeId)
-                .map(entity -> new Interaction(
-                        entity.getId(),
-                        entity.getUserId(),
-                        entity.getChallengeId(),
-                        entity.getUserInput(),
-                        entity.getAiResponse(),
-                        new Score(entity.getScore())
-                ));
+                .map(this::toDomain);
+    }
+
+    private Interaction toDomain(InteractionEntity entity) {
+        return new Interaction(
+                entity.getId(),
+                entity.getUserId(),
+                entity.getChallengeId(),
+                entity.getUserInput(),
+                entity.getAiResponse(),
+                new Score(entity.getScore()),
+                entity.getCreatedAt()
+        );
     }
 }

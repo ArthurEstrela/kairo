@@ -23,6 +23,17 @@ public class Interaction {
         this.createdAt = Instant.now();
     }
 
+    // For reconstruction from persistence (preserves the original creation time)
+    public Interaction(UUID id, UUID userId, UUID challengeId, String userInput, String aiResponse, Score score, Instant createdAt) {
+        this.id = id;
+        this.userId = userId;
+        this.challengeId = challengeId;
+        this.userInput = userInput;
+        this.aiResponse = aiResponse;
+        this.score = score;
+        this.createdAt = createdAt;
+    }
+
     // --- GETTERS ---
     public UUID getId() { return id; }
     public UUID getUserId() { return userId; }

@@ -1,5 +1,6 @@
 package com.skill.kairo.infrastructure.adapter.out.persistence.jpa;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -7,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -28,5 +30,7 @@ public class SkillEntity {
     private int difficultyLevel;
     private UUID createdByUserId;
     private boolean isPublic;
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 }
