@@ -9,4 +9,7 @@ import java.util.UUID;
 public interface SkillRepository {
     List<Skill> findAll();
     Optional<Skill> findById(UUID id);
+    void save(Skill skill);
+    List<Skill> findByCreatedByUserId(UUID userId, int limit);
+    long countByCreatedByUserId(UUID userId);
 }

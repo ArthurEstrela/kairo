@@ -9,6 +9,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -47,5 +48,18 @@ public class JpaInteractionRepositoryAdapter implements InteractionRepository {
                         new Score(entity.getScore())
                 ))
                 .toList();
+    }
+
+    @Override
+    public Optional<Interaction> findByIdAndUserIdAndChallengeId(UUID id, UUID userId, UUID challengeId) {
+        return springDataRepository.findByIdAndUserIdAndChallengeId(id, userId, challengeId)
+                .map(entity -> new Interaction(
+                        entity.getId(),
+                        entity.getUserId(),
+                        entity.getChallengeId(),
+                        entity.getUserInput(),
+                        entity.getAiResponse(),
+                        new Score(entity.getScore())
+                ));
     }
 }

@@ -39,4 +39,15 @@ public class JpaGamificationRepositoryAdapter implements GamificationRepository 
                 .map(mapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public int deductLifeAndReturn(UUID userId) {
+        springDataRepository.deductLife(userId);
+        return springDataRepository.getLivesByUserId(userId).orElse(0);
+    }
+
+    @Override
+    public int getLives(UUID userId) {
+        return springDataRepository.getLivesByUserId(userId).orElse(0);
+    }
 }

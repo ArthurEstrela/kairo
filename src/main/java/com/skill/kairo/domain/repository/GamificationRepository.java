@@ -16,4 +16,8 @@ public interface GamificationRepository {
      * Usado pelo scheduler de recarga de vidas.
      */
     List<GamificationProfile> findAllWithLivesLostBefore(Instant threshold);
+
+    int deductLifeAndReturn(UUID userId);
+
+    int getLives(UUID userId);
 }
