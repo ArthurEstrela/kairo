@@ -13,10 +13,9 @@ public interface SpringDataChallengeProgressRepository extends JpaRepository<Cha
 
     Optional<ChallengeProgressEntity> findByUserIdAndChallengeId(UUID userId, UUID challengeId);
 
-    @Query("SELECT p FROM ChallengeProgressEntity p WHERE p.userId = :userId AND p.challengeId IN :challengeIds")
     List<ChallengeProgressEntity> findByUserIdAndChallengeIdIn(
-        @Param("userId") UUID userId,
-        @Param("challengeIds") List<UUID> challengeIds
+        UUID userId,
+        List<UUID> challengeIds
     );
 
     @Modifying

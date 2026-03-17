@@ -32,7 +32,9 @@ public class JpaSkillRepositoryAdapter implements SkillRepository {
         return springDataRepository.findById(id).map(this::toDomain);
     }
 
-    private Skill toDomain(SkillEntity entity) {
-        return new Skill(entity.getId(), entity.getName(), entity.getDescription(), entity.getDifficultyLevel());
+    private Skill toDomain(SkillEntity e) {
+        // iconUrl is a presentation concern — excluded from domain model, mapped in DTOs
+        return new Skill(e.getId(), e.getName(), e.getDescription(),
+                e.getDifficultyLevel(), e.getCreatedByUserId(), e.isPublic());
     }
 }

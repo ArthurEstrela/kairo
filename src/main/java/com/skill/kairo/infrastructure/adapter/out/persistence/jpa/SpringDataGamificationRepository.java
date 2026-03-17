@@ -25,14 +25,8 @@ public interface SpringDataGamificationRepository extends JpaRepository<Gamifica
 
     @Modifying
     @Transactional
-    @Query(value = """
-        UPDATE gamification_profiles
-        SET current_lives = GREATEST(current_lives - 1, 0),
-            last_life_lost_at = NOW()
-        WHERE user_id = :userId
-        RETURNING current_lives
-        """, nativeQuery = true)
-    Integer deductLifeAndReturn(@Param("userId") UUID userId);
+    @Query(value = "UPDATE gamification_profiles SET current_lives = GREATEST(current_lives - 1, 0), last_life_lost_at = NOW() WHERE user_id = :userId", nativeQuery = true)
+    void deductLife(@Param("userId") UUID userId);
 
     @Query("SELECT g.currentLives FROM GamificationProfileEntity g WHERE g.userId = :userId")
     Optional<Integer> getLivesByUserId(@Param("userId") UUID userId);

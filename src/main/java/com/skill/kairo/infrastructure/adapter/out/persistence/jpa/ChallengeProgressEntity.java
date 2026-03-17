@@ -1,15 +1,23 @@
 package com.skill.kairo.infrastructure.adapter.out.persistence.jpa;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "user_challenge_progress")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class ChallengeProgressEntity {
-    @Id private UUID id;
+
+    @Id
+    private UUID id;
     private UUID userId;
     private UUID challengeId;
     private int bestScore;
