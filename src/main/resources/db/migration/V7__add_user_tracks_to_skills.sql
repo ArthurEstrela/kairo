@@ -1,0 +1,4 @@
+ALTER TABLE skills
+    ADD COLUMN created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    ADD COLUMN is_public BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
