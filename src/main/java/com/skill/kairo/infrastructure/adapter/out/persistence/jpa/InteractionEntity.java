@@ -29,7 +29,7 @@ public class InteractionEntity {
     @Column(columnDefinition = "TEXT")
     private String userInput;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "JSONB")
     private String aiResponse;
 
     private int score;

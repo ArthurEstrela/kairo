@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -25,4 +26,7 @@ public class SkillEntity {
     private String description;
     private String iconUrl;
     private int difficultyLevel;
+    private UUID createdByUserId;
+    private boolean isPublic;
+    private Instant createdAt;
 }

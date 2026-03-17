@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface SpringDataInteractionRepository extends JpaRepository<InteractionEntity, UUID> {
@@ -14,4 +15,6 @@ public interface SpringDataInteractionRepository extends JpaRepository<Interacti
     List<InteractionEntity> findByUserIdAndCreatedAtAfter(UUID userId, Instant since);
 
     long countByUserId(UUID userId);
+
+    Optional<InteractionEntity> findByIdAndUserIdAndChallengeId(UUID id, UUID userId, UUID challengeId);
 }
