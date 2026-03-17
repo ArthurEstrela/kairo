@@ -1,5 +1,6 @@
 package com.skill.kairo.infrastructure.adapter.out.cache;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Component;
@@ -17,7 +18,7 @@ public class RedisLeaderboardAdapter {
 
     private final RedisTemplate<String, String> redisTemplate;
 
-    public RedisLeaderboardAdapter(RedisTemplate<String, String> redisTemplate) {
+    public RedisLeaderboardAdapter(@Qualifier("leaderboardRedisTemplate") RedisTemplate<String, String> redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 

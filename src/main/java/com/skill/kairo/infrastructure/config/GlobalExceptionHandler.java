@@ -1,5 +1,6 @@
 package com.skill.kairo.infrastructure.config;
 
+import com.skill.kairo.domain.exception.EmailAlreadyExistsException;
 import com.skill.kairo.domain.exception.InvalidChallengeConfigException;
 import com.skill.kairo.domain.exception.OutOfLivesException;
 import org.springframework.http.HttpStatus;
@@ -33,7 +34,16 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
-    // 1. Apanha a nossa regra de negócio de "Sem Vidas"
+    // 1. Apanha email duplicado no registo
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    public ProblemDetail handleEmailAlreadyExistsException(EmailAlreadyExistsException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problemDetail.setTitle("Email Já Registado");
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
+    }
+
+    // 2. Apanha a nossa regra de negócio de "Sem Vidas"
     @ExceptionHandler(OutOfLivesException.class)
     public ProblemDetail handleOutOfLivesException(OutOfLivesException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());

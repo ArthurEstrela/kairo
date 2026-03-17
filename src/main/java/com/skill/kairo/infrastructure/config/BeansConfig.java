@@ -18,11 +18,17 @@ import com.skill.kairo.domain.repository.GamificationRepository;
 import com.skill.kairo.domain.repository.InteractionRepository;
 import com.skill.kairo.domain.repository.SubscriptionRepository;
 import com.skill.kairo.domain.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class BeansConfig {
+
+    @Bean
+    ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
 
     @Bean
     EvaluateInteractionUseCase evaluateInteractionUseCase(

@@ -29,7 +29,7 @@ public class Subscription {
 
     public static Subscription createDefaultFreemium(UUID userId) {
         return new Subscription(UUID.randomUUID(), userId, null, null,
-                SubscriptionPlan.FREEMIUM, true, Instant.MAX);
+                SubscriptionPlan.FREEMIUM, true, null);
     }
 
     // --- COMPORTAMENTOS DO SAAS ---
@@ -53,6 +53,7 @@ public class Subscription {
 
     public boolean hasPremiumAccess(Instant now) {
         if (this.plan == SubscriptionPlan.FREEMIUM) return false;
+        if (this.currentPeriodEnd == null) return this.active;
         return this.active && now.isBefore(this.currentPeriodEnd);
     }
 
