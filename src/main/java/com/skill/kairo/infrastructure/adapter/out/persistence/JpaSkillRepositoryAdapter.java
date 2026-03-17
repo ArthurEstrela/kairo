@@ -33,6 +33,6 @@ public class JpaSkillRepositoryAdapter implements SkillRepository {
     }
 
     private Skill toDomain(SkillEntity entity) {
-        return new Skill(entity.getId(), entity.getName(), entity.getDescription());
+        return new Skill(entity.getId(), entity.getName(), entity.getDescription(), entity.getDifficultyLevel());
     }
 }

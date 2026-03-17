@@ -5,5 +5,6 @@ import java.util.UUID;
 public record SkillResponse(
         UUID id,
         String name,
-        String description
+        String description,
+        int difficultyLevel
 ) {}

@@ -32,7 +32,7 @@ public class SkillController {
     public ResponseEntity<List<SkillResponse>> getAllSkills() {
         List<SkillResponse> skills = skillRepository.findAll()
                 .stream()
-                .map(skill -> new SkillResponse(skill.getId(), skill.getName(), skill.getDescription()))
+                .map(skill -> new SkillResponse(skill.getId(), skill.getName(), skill.getDescription(), skill.getDifficultyLevel()))
                 .toList();
         return ResponseEntity.ok(skills);
     }

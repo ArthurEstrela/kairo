@@ -24,4 +24,5 @@ public class SkillEntity {
     private String name;
     private String description;
     private String iconUrl;
+    private int difficultyLevel;
 }
