@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skill.kairo.application.port.AIPort;
 import com.skill.kairo.domain.model.challenge.Score;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 @Component
+@ConditionalOnProperty(name = "ai.provider", havingValue = "openai")
 public class OpenAIAdapter implements AIPort {
 
     private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
