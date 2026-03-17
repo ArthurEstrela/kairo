@@ -12,6 +12,13 @@ public record RoleplayConfig(
     String scenarioContext
 ) implements ChallengeConfig {
 
+    public RoleplayConfig {
+        if (aiPersona == null || aiPersona.isBlank()) throw new IllegalArgumentException("aiPersona cannot be blank");
+        if (userObjective == null || userObjective.isBlank()) throw new IllegalArgumentException("userObjective cannot be blank");
+        forbiddenWords = forbiddenWords != null ? forbiddenWords : List.of();
+        scenarioContext = scenarioContext != null ? scenarioContext : "";
+    }
+
     @JsonCreator
     public static RoleplayConfig of(
         @JsonProperty("aiPersona") String aiPersona,
@@ -31,15 +38,10 @@ public record RoleplayConfig(
 
     @Override
     public String getSystemPrompt() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Ajas como ").append(aiPersona).append(". ");
-        sb.append("O objetivo do utilizador é ").append(userObjective).append(". ");
-        if (scenarioContext != null && !scenarioContext.isBlank()) {
-            sb.append("Contexto: ").append(scenarioContext).append(". ");
-        }
-        if (forbiddenWords != null && !forbiddenWords.isEmpty()) {
-            sb.append("Palavras proibidas: ").append(String.join(", ", forbiddenWords)).append(".");
-        }
-        return sb.toString();
+        String prompt = "Aja como " + aiPersona + ". " +
+                "O objetivo do utilizador é " + userObjective + ". " +
+                (!scenarioContext.isBlank() ? "Contexto: " + scenarioContext + ". " : "") +
+                (!forbiddenWords.isEmpty() ? "Palavras proibidas: " + String.join(", ", forbiddenWords) + "." : "");
+        return prompt;
     }
 }

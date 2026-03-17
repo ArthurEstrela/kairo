@@ -9,4 +9,8 @@ public record ChallengeProgress(
     UUID challengeId,
     int bestScore,
     Instant lastUpdatedAt
-) {}
+) {
+    public ChallengeProgress {
+        if (bestScore < 0 || bestScore > 100) throw new IllegalArgumentException("bestScore must be 0–100, got: " + bestScore);
+    }
+}

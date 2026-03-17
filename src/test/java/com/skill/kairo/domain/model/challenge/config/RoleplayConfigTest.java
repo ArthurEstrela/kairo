@@ -14,8 +14,7 @@ class RoleplayConfigTest {
     @Test
     void shouldOmitForbiddenWordsClauseWhenEmpty() {
         var config = new RoleplayConfig("chefe", "pedir aumento", List.of(), 2, "contexto");
-        assertThat(config.getSystemPrompt()).doesNotContain("Proibidas");
-        assertThat(config.getSystemPrompt()).doesNotContain("proibidas");
+        assertThat(config.getSystemPrompt()).doesNotContain("Palavras proibidas");
     }
 
     @Test
