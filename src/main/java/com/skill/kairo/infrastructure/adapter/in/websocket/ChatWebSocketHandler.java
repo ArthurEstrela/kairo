@@ -14,6 +14,8 @@ import com.skill.kairo.domain.model.user.Skill;
 import com.skill.kairo.domain.repository.*;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
@@ -21,6 +23,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 /**
  * Multi-turn WebSocket roleplay handler.
@@ -44,6 +47,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final InteractionRepository interactionRepository;
     private final ObjectMapper objectMapper;
 
+    private final TransactionTemplate transactionTemplate;
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
     public ChatWebSocketHandler(
@@ -53,7 +57,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             ChallengeProgressRepository progressRepository,
             GamificationRepository gamificationRepository,
             InteractionRepository interactionRepository,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            PlatformTransactionManager txManager) {
         this.jwtPort = jwtPort;
         this.aiPort = aiPort;
         this.skillRepository = skillRepository;
@@ -62,6 +67,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         this.gamificationRepository = gamificationRepository;
         this.interactionRepository = interactionRepository;
         this.objectMapper = objectMapper;
+        this.transactionTemplate = new TransactionTemplate(txManager);
     }
 
     private static class RoleplaySession {
@@ -99,6 +105,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
         session.getAttributes().put(KEY_USER_ID, jwtPort.extractUserId(token));
+        send(session, Map.of("type", "AUTH_ACK"));
     }
 
     private void handleInit(WebSocketSession session, String challengeIdStr) throws IOException {
@@ -124,7 +131,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             sendErrorAndClose(session, "CHALLENGE_FORBIDDEN"); return;
         }
 
-        String status = computeStatus(userId, challenge, challengeRepository.findBySkillId(challenge.getSkillId()));
+        List<Challenge> allChallenges = challengeRepository.findBySkillId(challenge.getSkillId());
+        List<UUID> challengeIds = allChallenges.stream().map(Challenge::getId).collect(Collectors.toList());
+        Map<UUID, Integer> progressMap = new HashMap<>();
+        progressRepository.findByUserIdAndChallengeIdIn(userId, challengeIds)
+            .forEach(p -> progressMap.put(p.challengeId(), p.bestScore()));
+        String status = computeStatus(challenge, allChallenges, progressMap);
         if ("LOCKED".equals(status)) {
             sendErrorAndClose(session, "CHALLENGE_LOCKED"); return;
         }
@@ -217,41 +229,54 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             sendErrorAndClose(session, "EVALUATION_FAILED"); return;
         }
 
-        int score = interactionScore.score();
+        final int score = interactionScore.score();
+        final UUID interactionId = UUID.randomUUID();
 
-        int prevBestScore = progressRepository
-            .findByUserIdAndChallengeId(userId, rs.challengeId)
-            .map(ChallengeProgress::bestScore).orElse(0);
-
-        int livesRemaining;
-        if (score < 60) {
-            livesRemaining = gamificationRepository.deductLifeAndReturn(userId);
-        } else {
-            livesRemaining = gamificationRepository.getLives(userId);
-        }
-
-        UUID interactionId = UUID.randomUUID();
-        String lastUserTurn = "";
+        String lastUserTurnTmp = "";
         for (int i = rs.history.size() - 1; i >= 0; i--) {
-            if (i % 2 == 1) { lastUserTurn = rs.history.get(i); break; }
+            if (i % 2 == 1) { lastUserTurnTmp = rs.history.get(i); break; }
         }
-        String historyJson;
+        final String lastUserTurn = lastUserTurnTmp;
+        String historyJsonTmp;
         try {
-            historyJson = objectMapper.writeValueAsString(rs.history);
+            historyJsonTmp = objectMapper.writeValueAsString(rs.history);
         } catch (Exception e) {
-            historyJson = "[]";
+            historyJsonTmp = "[]";
         }
-        interactionRepository.save(new Interaction(
-            interactionId, userId, rs.challengeId, lastUserTurn, historyJson, new Score(score)
-        ));
+        final String historyJson = historyJsonTmp;
 
-        int xpAwarded = (score >= 70 && prevBestScore < 70) ? challenge.getXpReward() : 0;
-        if (xpAwarded > 0) {
-            gamificationRepository.findByUserId(userId).ifPresent(profile -> {
-                profile.awardXp(xpAwarded);
-                gamificationRepository.save(profile);
-            });
-        }
+        // Wrap prevBestScore read, interaction save, XP decision and gamification save
+        // in a single transaction to prevent double-XP race conditions.
+        int[] resultHolder = transactionTemplate.execute(status -> {
+            int prevBestScore = progressRepository
+                .findByUserIdAndChallengeId(userId, rs.challengeId)
+                .map(ChallengeProgress::bestScore).orElse(0);
+
+            int livesRemaining;
+            if (score < 60) {
+                livesRemaining = gamificationRepository.deductLifeAndReturn(userId);
+            } else {
+                livesRemaining = gamificationRepository.getLives(userId);
+            }
+
+            interactionRepository.save(new Interaction(
+                interactionId, userId, rs.challengeId, lastUserTurn, historyJson, new Score(score)
+            ));
+
+            int xpAwarded = (score >= 70 && prevBestScore < 70) ? challenge.getXpReward() : 0;
+            if (xpAwarded > 0) {
+                gamificationRepository.findByUserId(userId).ifPresent(profile -> {
+                    profile.awardXp(xpAwarded);
+                    gamificationRepository.save(profile);
+                });
+            }
+
+            return new int[]{livesRemaining, xpAwarded};
+        });
+
+        // WebSocket IO must happen outside the transaction
+        int livesRemaining = resultHolder[0];
+        int xpAwarded = resultHolder[1];
 
         send(session, Map.of(
             "type", "RESULT",
@@ -278,16 +303,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         return sb.toString();
     }
 
-    private String computeStatus(UUID userId, Challenge target, List<Challenge> allChallenges) {
+    private static String computeStatus(Challenge target, List<Challenge> allChallenges,
+                                        Map<UUID, Integer> progressMap) {
         List<Challenge> sorted = allChallenges.stream()
             .sorted(Comparator.comparingInt(Challenge::getLevelOrder)).toList();
 
         int prevBest = 100;
         for (int i = 0; i < sorted.size(); i++) {
             Challenge c = sorted.get(i);
-            int best = progressRepository
-                .findByUserIdAndChallengeId(userId, c.getId())
-                .map(ChallengeProgress::bestScore).orElse(0);
+            int best = progressMap.getOrDefault(c.getId(), 0);
 
             String status;
             if (i == 0) {

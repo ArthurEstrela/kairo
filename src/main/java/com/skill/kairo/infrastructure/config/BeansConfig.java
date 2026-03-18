@@ -118,7 +118,8 @@ public class BeansConfig {
     @Bean
     CompleteChallengeUseCase completeChallengeUseCase(
             InteractionRepository interactionRepository,
-            ChallengeProgressRepository progressRepository) {
-        return new CompleteChallengeService(interactionRepository, progressRepository);
+            ChallengeProgressRepository progressRepository,
+            PlatformTransactionManager txManager) {
+        return new CompleteChallengeService(interactionRepository, progressRepository, txManager);
     }
 }

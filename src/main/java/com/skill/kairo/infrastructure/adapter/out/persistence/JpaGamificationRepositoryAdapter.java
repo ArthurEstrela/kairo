@@ -42,8 +42,7 @@ public class JpaGamificationRepositoryAdapter implements GamificationRepository 
 
     @Override
     public int deductLifeAndReturn(UUID userId) {
-        springDataRepository.deductLife(userId);
-        return springDataRepository.getLivesByUserId(userId).orElse(0);
+        return springDataRepository.deductLifeAndReturn(userId);
     }
 
     @Override

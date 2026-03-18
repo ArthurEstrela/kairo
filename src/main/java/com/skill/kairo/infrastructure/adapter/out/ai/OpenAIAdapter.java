@@ -92,6 +92,13 @@ public class OpenAIAdapter implements AIPort {
         }
     }
 
+    // -----------------------------------------------------------------------
+    // NOT IMPLEMENTED — track generation is Gemini-only for now.
+    // If ai.provider=openai is set, calling either method below will throw
+    // UnsupportedOperationException at runtime. Do NOT add openai as a
+    // provider for track generation until these are properly implemented.
+    // -----------------------------------------------------------------------
+
     @Override
     public String generateStructuredTrack(String prompt) {
         throw new UnsupportedOperationException("OpenAI structured track generation not implemented");
