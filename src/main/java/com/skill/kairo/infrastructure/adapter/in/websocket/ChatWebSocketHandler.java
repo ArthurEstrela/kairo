@@ -12,6 +12,7 @@ import com.skill.kairo.domain.model.challenge.Score;
 import com.skill.kairo.domain.model.challenge.config.RoleplayConfig;
 import com.skill.kairo.domain.model.user.Skill;
 import com.skill.kairo.domain.repository.*;
+import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
@@ -28,6 +29,8 @@ import java.util.concurrent.Executors;
  */
 @Component
 public class ChatWebSocketHandler extends TextWebSocketHandler {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ChatWebSocketHandler.class);
 
     private static final String KEY_USER_ID = "userId";
     private static final String KEY_SESSION  = "roleplaySession";
@@ -67,6 +70,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         int currentTurn = 0;
         List<String> history = new ArrayList<>();
         boolean openingComplete = false;
+        final java.util.concurrent.atomic.AtomicBoolean processing = new java.util.concurrent.atomic.AtomicBoolean(false);
+        final java.util.concurrent.atomic.AtomicBoolean finalized = new java.util.concurrent.atomic.AtomicBoolean(false);
     }
 
     @Override
@@ -162,34 +167,47 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             sendErrorAndClose(session, "SESSION_NOT_READY"); return;
         }
 
-        rs.currentTurn++;
-        send(session, Map.of("type", "TURN_ACK", "turn", rs.currentTurn, "maxTurns", rs.maxTurns));
-        rs.history.add(userInput);
-
-        Challenge challenge = challengeRepository.findById(rs.challengeId).orElseThrow();
-        RoleplayConfig config = (RoleplayConfig) challenge.getConfig();
-
-        String contextualInput = buildContextualInput(rs.history, userInput);
-
-        StringBuilder aiReply = new StringBuilder();
-        try {
-            aiPort.generateStreamingResponse(config.getSystemPrompt(), contextualInput, chunk -> {
-                aiReply.append(chunk);
-                send(session, Map.of("type", "CHUNK", "delta", chunk));
-            });
-        } catch (Exception e) {
-            session.getAttributes().remove(KEY_SESSION);
-            sendErrorAndClose(session, "TURN_STREAM_FAILED"); return;
+        if (!rs.processing.compareAndSet(false, true)) {
+            sendError(session, "TURN_IN_PROGRESS");
+            return;
         }
-        rs.history.add(aiReply.toString());
 
-        if (rs.currentTurn >= rs.maxTurns) {
-            finalizeTurn(session, userId, challenge, config, rs);
+        try {
+            rs.currentTurn++;
+            send(session, Map.of("type", "TURN_ACK", "turn", rs.currentTurn, "maxTurns", rs.maxTurns));
+            rs.history.add(userInput);
+
+            Challenge challenge = challengeRepository.findById(rs.challengeId).orElseThrow();
+            RoleplayConfig config = (RoleplayConfig) challenge.getConfig();
+
+            String contextualInput = buildContextualInput(rs.history, userInput);
+
+            StringBuilder aiReply = new StringBuilder();
+            try {
+                aiPort.generateStreamingResponse(config.getSystemPrompt(), contextualInput, chunk -> {
+                    aiReply.append(chunk);
+                    send(session, Map.of("type", "CHUNK", "delta", chunk));
+                });
+            } catch (Exception e) {
+                session.getAttributes().remove(KEY_SESSION);
+                sendErrorAndClose(session, "TURN_STREAM_FAILED"); return;
+            }
+            rs.history.add(aiReply.toString());
+
+            if (rs.currentTurn >= rs.maxTurns) {
+                finalizeTurn(session, userId, challenge, config, rs);
+            }
+        } finally {
+            rs.processing.set(false);
         }
     }
 
     private void finalizeTurn(WebSocketSession session, UUID userId,
                                Challenge challenge, RoleplayConfig config, RoleplaySession rs) throws IOException {
+        if (!rs.finalized.compareAndSet(false, true)) {
+            return; // already finalized
+        }
+
         String evalPrompt = buildEvalPrompt(config);
 
         InteractionScore interactionScore;
@@ -228,10 +246,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         ));
 
         int xpAwarded = (score >= 70 && prevBestScore < 70) ? challenge.getXpReward() : 0;
-        gamificationRepository.findByUserId(userId).ifPresent(profile -> {
-            profile.awardXp(xpAwarded);
-            gamificationRepository.save(profile);
-        });
+        if (xpAwarded > 0) {
+            gamificationRepository.findByUserId(userId).ifPresent(profile -> {
+                profile.awardXp(xpAwarded);
+                gamificationRepository.save(profile);
+            });
+        }
 
         send(session, Map.of(
             "type", "RESULT",
@@ -300,7 +320,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             if (session.isOpen()) {
                 session.sendMessage(new TextMessage(objectMapper.writeValueAsString(data)));
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.warn("Failed to send message to session {}: {}", session.getId(), e.getMessage());
+        }
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        executor.shutdownNow();
     }
 
     private void sendError(WebSocketSession session, String code) {
