@@ -30,7 +30,7 @@ public class GetTrackByIdService implements GetTrackByIdUseCase {
             .orElseThrow(() -> new NoSuchElementException("TRACK_NOT_FOUND"));
 
         UUID owner = skill.createdByUserId();
-        if (owner != null && !owner.equals(requesterId) && !skill.isPublic()) {
+        if (owner == null || (!owner.equals(requesterId) && !skill.isPublic())) {
             throw new NoSuchElementException("TRACK_NOT_FOUND");
         }
 

@@ -99,8 +99,10 @@ public class GenerateTrackService implements GenerateTrackUseCase {
                 }
                 return null;
             });
+        } catch (RuntimeException e) {
+            throw e;  // let AI_PARSE_ERROR and domain validation errors propagate as-is
         } catch (Exception e) {
-            throw new RuntimeException("DB_ERROR");
+            throw new RuntimeException("DB_ERROR", e);
         }
 
         return new GenerateTrackResponse(skillId.toString());
