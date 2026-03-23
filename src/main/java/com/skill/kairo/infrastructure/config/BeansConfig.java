@@ -39,11 +39,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 public class BeansConfig {
 
     @Bean
-    ObjectMapper objectMapper() {
-        return new ObjectMapper();
-    }
-
-    @Bean
     EvaluateInteractionUseCase evaluateInteractionUseCase(
             ChallengeRepository challengeRepository,
             GamificationRepository gamificationRepository,

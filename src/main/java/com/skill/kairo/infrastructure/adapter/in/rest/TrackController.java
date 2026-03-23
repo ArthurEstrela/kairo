@@ -3,7 +3,6 @@ package com.skill.kairo.infrastructure.adapter.in.rest;
 import com.skill.kairo.application.dto.request.CompleteChallengeRequest;
 import com.skill.kairo.application.dto.request.GenerateTrackRequest;
 import com.skill.kairo.application.dto.response.GenerateTrackResponse;
-import com.skill.kairo.application.dto.response.MyTracksResponse;
 import com.skill.kairo.application.dto.response.TrackWithChallengesResponse;
 import com.skill.kairo.application.usecase.*;
 import com.skill.kairo.infrastructure.security.KairoPrincipal;
@@ -62,8 +61,16 @@ public class TrackController {
     }
 
     @GetMapping("/tracks/my")
-    public ResponseEntity<MyTracksResponse> getMyTracks(@AuthenticationPrincipal KairoPrincipal principal) {
-        return ResponseEntity.ok(getMyTracks.execute(principal.userId()));
+    public ResponseEntity<?> getMyTracks(@AuthenticationPrincipal KairoPrincipal principal) {
+        try {
+            return ResponseEntity.ok(getMyTracks.execute(principal.userId()));
+        } catch (Exception e) {
+            // DEBUG: expose root cause temporarily so we can see what's failing
+            String detail = e.getClass().getName() + ": " + e.getMessage();
+            Throwable cause = e.getCause();
+            while (cause != null) { detail += " | caused by: " + cause.getClass().getName() + ": " + cause.getMessage(); cause = cause.getCause(); }
+            return ResponseEntity.internalServerError().body(Map.of("debug", detail));
+        }
     }
 
     @GetMapping("/tracks/{trackId}")
