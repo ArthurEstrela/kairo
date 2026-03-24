@@ -4,6 +4,7 @@ import com.skill.kairo.domain.model.gamification.GamificationProfile;
 import com.skill.kairo.domain.repository.GamificationRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -25,6 +26,7 @@ public class TrackQuotaResetScheduler {
      * Para cada perfil Freemium com quota expirada, repõe as 3 gerações mensais.
      */
     @Scheduled(cron = "0 0 0 * * *", zone = "UTC")
+    @Transactional
     public void resetExpiredQuotas() {
         Instant now = Instant.now();
         List<GamificationProfile> expired = gamificationRepository.findAllWithExpiredQuota(now);

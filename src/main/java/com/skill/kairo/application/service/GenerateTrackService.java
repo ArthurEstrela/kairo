@@ -49,9 +49,11 @@ public class GenerateTrackService implements GenerateTrackUseCase {
 
     @Override
     public GenerateTrackResponse execute(UUID userId, String goal) {
-        // 1. Verificar quota antes de chamar a IA (evita desperdício de tokens)
+        // Verificar quota antes de chamar a IA (evita desperdício de tokens).
+        // Nota: esta verificação é feita fora da transação. Em caso de concorrência simultânea
+        // do mesmo utilizador, ambos os pedidos podem passar o guard — aceitável para MVP.
         GamificationProfile profile = gamificationRepository.findByUserId(userId)
-            .orElseThrow(() -> new RuntimeException("Perfil de gamification não encontrado para o utilizador: " + userId));
+            .orElseThrow(() -> new RuntimeException("Perfil de gamification não encontrado"));
         if (!profile.hasTrackQuota()) {
             throw new TrackGenerationLimitException();
         }
