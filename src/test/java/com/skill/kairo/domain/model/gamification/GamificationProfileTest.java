@@ -6,11 +6,14 @@ import com.skill.kairo.domain.event.LeaguePromotedEvent;
 import com.skill.kairo.domain.event.LifeLostEvent;
 import com.skill.kairo.domain.event.XpAwardedEvent;
 import com.skill.kairo.domain.exception.OutOfLivesException;
+import com.skill.kairo.domain.exception.TrackGenerationLimitException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -295,7 +298,7 @@ class GamificationProfileTest {
             profile.consumeTrackGeneration();
             profile.consumeTrackGeneration();
             assertThatThrownBy(profile::consumeTrackGeneration)
-                .isInstanceOf(com.skill.kairo.domain.exception.TrackGenerationLimitException.class);
+                .isInstanceOf(TrackGenerationLimitException.class);
         }
 
         @Test
@@ -325,7 +328,7 @@ class GamificationProfileTest {
         void resetQuotaRestoresCount() {
             profile.consumeTrackGeneration();
             profile.consumeTrackGeneration();
-            java.time.Instant nextReset = java.time.Instant.now().plus(30, java.time.temporal.ChronoUnit.DAYS);
+            Instant nextReset = Instant.now().plus(30, ChronoUnit.DAYS);
             profile.resetQuota(3, nextReset);
             assertThat(profile.getAvailableTrackGenerations()).isEqualTo(3);
             assertThat(profile.getQuotaResetDate()).isEqualTo(nextReset);

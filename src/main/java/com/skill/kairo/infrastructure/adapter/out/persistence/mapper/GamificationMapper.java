@@ -24,6 +24,7 @@ public class GamificationMapper {
     }
 
     public GamificationProfileEntity toEntity(GamificationProfile domain) {
+        // TODO Task 5: add availableTrackGenerations and quotaResetDate when GamificationProfileEntity gets the new fields
         return new GamificationProfileEntity(
                 domain.getId(),
                 domain.getUserId(),
