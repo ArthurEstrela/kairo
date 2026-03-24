@@ -89,7 +89,9 @@ public class GenerateTrackService implements GenerateTrackUseCase {
                     int maxTurns = clamp(cn.path("maxTurns").asInt(2), MIN_TURNS, MAX_TURNS);
                     String cTitle = cn.path("title").asText("Desafio " + levelOrder);
                     String aiPersona = cn.path("aiPersona").asText("personagem");
+                    if (aiPersona.isBlank()) aiPersona = "personagem";
                     String userObjective = cn.path("userObjective").asText("completar o desafio");
+                    if (userObjective.isBlank()) userObjective = "completar o desafio";
                     String scenarioContext = cn.path("scenarioContext").asText("");
                     List<String> forbiddenWords = new ArrayList<>();
                     cn.path("forbiddenWords").forEach(fw -> forbiddenWords.add(fw.asText()));

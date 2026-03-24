@@ -62,15 +62,7 @@ public class TrackController {
 
     @GetMapping("/tracks/my")
     public ResponseEntity<?> getMyTracks(@AuthenticationPrincipal KairoPrincipal principal) {
-        try {
-            return ResponseEntity.ok(getMyTracks.execute(principal.userId()));
-        } catch (Exception e) {
-            // DEBUG: expose root cause temporarily so we can see what's failing
-            String detail = e.getClass().getName() + ": " + e.getMessage();
-            Throwable cause = e.getCause();
-            while (cause != null) { detail += " | caused by: " + cause.getClass().getName() + ": " + cause.getMessage(); cause = cause.getCause(); }
-            return ResponseEntity.internalServerError().body(Map.of("debug", detail));
-        }
+        return ResponseEntity.ok(getMyTracks.execute(principal.userId()));
     }
 
     @GetMapping("/tracks/{trackId}")
