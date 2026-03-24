@@ -1,6 +1,7 @@
 package com.skill.kairo.infrastructure.config;
 
 import com.skill.kairo.domain.exception.EmailAlreadyExistsException;
+import com.skill.kairo.domain.exception.TrackGenerationLimitException;
 import com.skill.kairo.domain.exception.InvalidChallengeConfigException;
 import com.skill.kairo.domain.exception.OutOfLivesException;
 import org.springframework.http.HttpStatus;
@@ -73,7 +74,17 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
-    // 4. Fallback de Segurança (Se algo inesperado rebentar, não expomos o código ao utilizador)
+    // 4. Apanha limite de geração de trilhas atingido
+    @ExceptionHandler(TrackGenerationLimitException.class)
+    public ProblemDetail handleTrackGenerationLimitException(TrackGenerationLimitException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+        pd.setTitle("Limite de Trilhas Atingido");
+        pd.setProperty("timestamp", Instant.now());
+        pd.setProperty("actionRequired", "UPGRADE_TO_PREMIUM");
+        return pd;
+    }
+
+    // 5. Fallback de Segurança (Se algo inesperado rebentar, não expomos o código ao utilizador)
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGenericException(Exception ex) {
         // Num cenário real, enviaríamos o 'ex' para o Sentry ou Datadog aqui

@@ -85,8 +85,10 @@ public class BeansConfig {
             SkillRepository skillRepository,
             ChallengeRepository challengeRepository,
             ObjectMapper objectMapper,
-            PlatformTransactionManager txManager) {
-        return new GenerateTrackService(aiPort, skillRepository, challengeRepository, objectMapper, txManager);
+            PlatformTransactionManager txManager,
+            GamificationRepository gamificationRepository) {
+        return new GenerateTrackService(aiPort, skillRepository, challengeRepository,
+                                        objectMapper, txManager, gamificationRepository);
     }
 
     @Bean

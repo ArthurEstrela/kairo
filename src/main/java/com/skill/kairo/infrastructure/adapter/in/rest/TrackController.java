@@ -1,6 +1,7 @@
 package com.skill.kairo.infrastructure.adapter.in.rest;
 
 import com.skill.kairo.application.dto.request.CompleteChallengeRequest;
+import com.skill.kairo.domain.exception.TrackGenerationLimitException;
 import com.skill.kairo.application.dto.request.GenerateTrackRequest;
 import com.skill.kairo.application.dto.response.GenerateTrackResponse;
 import com.skill.kairo.application.dto.response.TrackWithChallengesResponse;
@@ -49,6 +50,8 @@ public class TrackController {
         try {
             GenerateTrackResponse response = generateTrack.execute(principal.userId(), req.goal());
             return ResponseEntity.ok(response);
+        } catch (TrackGenerationLimitException e) {
+            throw e;  // propagate to GlobalExceptionHandler → 429
         } catch (RuntimeException e) {
             String msg = e.getMessage();
             if ("AI_ERROR".equals(msg) || "AI_PARSE_ERROR".equals(msg)) {

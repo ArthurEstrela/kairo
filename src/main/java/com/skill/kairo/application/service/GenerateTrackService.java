@@ -5,10 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skill.kairo.application.dto.response.GenerateTrackResponse;
 import com.skill.kairo.application.port.AIPort;
 import com.skill.kairo.application.usecase.GenerateTrackUseCase;
+import com.skill.kairo.domain.exception.TrackGenerationLimitException;
 import com.skill.kairo.domain.model.challenge.Challenge;
 import com.skill.kairo.domain.model.challenge.config.RoleplayConfig;
+import com.skill.kairo.domain.model.gamification.GamificationProfile;
 import com.skill.kairo.domain.model.user.Skill;
 import com.skill.kairo.domain.repository.ChallengeRepository;
+import com.skill.kairo.domain.repository.GamificationRepository;
 import com.skill.kairo.domain.repository.SkillRepository;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -30,19 +33,28 @@ public class GenerateTrackService implements GenerateTrackUseCase {
     private final ChallengeRepository challengeRepository;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
+    private final GamificationRepository gamificationRepository;
 
     public GenerateTrackService(AIPort aiPort, SkillRepository skillRepository,
                                 ChallengeRepository challengeRepository, ObjectMapper objectMapper,
-                                PlatformTransactionManager txManager) {
+                                PlatformTransactionManager txManager,
+                                GamificationRepository gamificationRepository) {
         this.aiPort = aiPort;
         this.skillRepository = skillRepository;
         this.challengeRepository = challengeRepository;
         this.objectMapper = objectMapper;
         this.transactionTemplate = new TransactionTemplate(txManager);
+        this.gamificationRepository = gamificationRepository;
     }
 
     @Override
     public GenerateTrackResponse execute(UUID userId, String goal) {
+        // 1. Verificar quota antes de chamar a IA (evita desperdício de tokens)
+        GamificationProfile profile = gamificationRepository.findByUserId(userId)
+            .orElseThrow(() -> new RuntimeException("Perfil de gamification não encontrado para o utilizador: " + userId));
+        if (!profile.hasTrackQuota()) {
+            throw new TrackGenerationLimitException();
+        }
         String prompt = buildPrompt(goal);
         String rawJson;
         try {
@@ -99,6 +111,9 @@ public class GenerateTrackService implements GenerateTrackUseCase {
                     Challenge challenge = new Challenge(UUID.randomUUID(), skillId, cTitle, xpReward, levelOrder, config);
                     challengeRepository.save(challenge);
                 }
+                // Consumir 1 geração da quota (dentro da transação — rollback automático se qualquer save falhar)
+                profile.consumeTrackGeneration();
+                gamificationRepository.save(profile);
                 return null;
             });
         } catch (RuntimeException e) {
