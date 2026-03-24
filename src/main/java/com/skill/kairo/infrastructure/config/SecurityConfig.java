@@ -41,6 +41,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/api/v1/webhooks/**").permitAll()
                 .requestMatchers("/api/v1/chat/**").permitAll()  // WebSocket handshake
+                .requestMatchers("/api/v1/subscriptions/session/**").permitAll()
                 // Tudo o resto exige JWT válido
                 .anyRequest().authenticated()
             )
