@@ -67,14 +67,18 @@ public class ProcessSubscriptionService implements ProcessSubscriptionUseCase {
             case "checkout.session.completed" -> {
                 if (event.kairoUserId() == null) return;  // evento sem metadata → ignorar
                 UUID userId = UUID.fromString(event.kairoUserId());
-                subscriptionRepository.findByUserId(userId).ifPresent(sub -> {
-                    sub.upgradeToPremium(
-                        event.stripeCustomerId(),       // pode ser null; corrigido por subscription.created
-                        event.stripeSubscriptionId(),
-                        null                            // currentPeriodEnd chega via invoice.payment_succeeded
+                var subscription = subscriptionRepository.findByUserId(userId)
+                        .orElseThrow(() -> new IllegalStateException("Subscrição não encontrada"));
+                // Só associar IDs Stripe se ambos estiverem presentes — caso contrário
+                // customer.subscription.created trata do link (chega instantes depois)
+                if (event.stripeCustomerId() != null && event.stripeSubscriptionId() != null) {
+                    subscription.upgradeToPremium(
+                            event.stripeCustomerId(),
+                            event.stripeSubscriptionId(),
+                            null  // currentPeriodEnd chega via invoice.payment_succeeded
                     );
-                    subscriptionRepository.save(sub);
-                });
+                    subscriptionRepository.save(subscription);
+                }
                 gamificationRepository.findByUserId(userId).ifPresent(profile -> {
                     profile.enableUnlimitedGenerations();
                     profile.restoreLives();

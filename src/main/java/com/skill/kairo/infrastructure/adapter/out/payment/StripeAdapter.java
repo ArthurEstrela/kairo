@@ -8,6 +8,7 @@ import com.skill.kairo.application.dto.response.SessionStatusResponse;
 import com.skill.kairo.application.port.PaymentPort;
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
+import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
@@ -89,7 +90,7 @@ public class StripeAdapter implements PaymentPort {
             Session session = Session.create(params);
             return new CheckoutSessionResponse(session.getClientSecret());
 
-        } catch (com.stripe.exception.StripeException e) {
+        } catch (StripeException e) {
             throw new RuntimeException("Erro ao criar sessão de checkout Stripe", e);
         }
     }
@@ -99,7 +100,7 @@ public class StripeAdapter implements PaymentPort {
         try {
             Session session = Session.retrieve(sessionId);
             return new SessionStatusResponse(session.getStatus());
-        } catch (com.stripe.exception.StripeException e) {
+        } catch (StripeException e) {
             throw new RuntimeException("Erro ao verificar sessão Stripe", e);
         }
     }
