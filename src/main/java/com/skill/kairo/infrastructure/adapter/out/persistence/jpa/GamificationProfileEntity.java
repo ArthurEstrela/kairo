@@ -29,4 +29,6 @@ public class GamificationProfileEntity {
     private int currentStreak;
     private String tier;
     private Instant lastLifeLostAt; // nullable
+    private Integer availableTrackGenerations; // nullable — null = Premium unlimited
+    private Instant quotaResetDate;            // nullable — null = Premium
 }

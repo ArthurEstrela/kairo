@@ -17,6 +17,12 @@ public interface GamificationRepository {
      */
     List<GamificationProfile> findAllWithLivesLostBefore(Instant threshold);
 
+    /**
+     * Devolve todos os perfis Freemium (not null) com quota expirada (quotaResetDate <= now).
+     * Usado pelo TrackQuotaResetScheduler.
+     */
+    List<GamificationProfile> findAllWithExpiredQuota(Instant now);
+
     int deductLifeAndReturn(UUID userId);
 
     int getLives(UUID userId);

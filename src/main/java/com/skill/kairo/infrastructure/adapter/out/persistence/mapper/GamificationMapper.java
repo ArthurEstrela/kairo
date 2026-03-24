@@ -18,13 +18,12 @@ public class GamificationMapper {
                 entity.getCurrentStreak(),
                 LeagueTier.valueOf(entity.getTier()),
                 entity.getLastLifeLostAt(),
-                null,  // availableTrackGenerations — to be mapped in Task 5
-                null   // quotaResetDate — to be mapped in Task 5
+                entity.getAvailableTrackGenerations(),
+                entity.getQuotaResetDate()
         );
     }
 
     public GamificationProfileEntity toEntity(GamificationProfile domain) {
-        // TODO Task 5: add availableTrackGenerations and quotaResetDate when GamificationProfileEntity gets the new fields
         return new GamificationProfileEntity(
                 domain.getId(),
                 domain.getUserId(),
@@ -33,7 +32,9 @@ public class GamificationMapper {
                 domain.getMaxLives(),
                 domain.getCurrentStreak(),
                 domain.getTier().name(),
-                domain.getLastLifeLostAt()
+                domain.getLastLifeLostAt(),
+                domain.getAvailableTrackGenerations(),
+                domain.getQuotaResetDate()
         );
     }
 }

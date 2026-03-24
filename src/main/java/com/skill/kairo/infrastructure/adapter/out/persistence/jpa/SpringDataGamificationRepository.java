@@ -23,6 +23,10 @@ public interface SpringDataGamificationRepository extends JpaRepository<Gamifica
         """)
     List<GamificationProfileEntity> findAllWithLivesLostBefore(@Param("threshold") Instant threshold);
 
+    @Query("SELECT p FROM GamificationProfileEntity p " +
+           "WHERE p.quotaResetDate <= :now AND p.availableTrackGenerations IS NOT NULL")
+    List<GamificationProfileEntity> findAllWithExpiredQuota(@Param("now") Instant now);
+
     @Modifying
     @Transactional
     @Query(value = "UPDATE gamification_profiles SET current_lives = GREATEST(current_lives - 1, 0), last_life_lost_at = NOW() WHERE user_id = :userId", nativeQuery = true)

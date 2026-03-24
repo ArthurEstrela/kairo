@@ -41,6 +41,14 @@ public class JpaGamificationRepositoryAdapter implements GamificationRepository 
     }
 
     @Override
+    public List<GamificationProfile> findAllWithExpiredQuota(Instant now) {
+        return springDataRepository.findAllWithExpiredQuota(now)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
     public int deductLifeAndReturn(UUID userId) {
         return springDataRepository.deductLifeAndReturn(userId);
     }
