@@ -6,6 +6,8 @@ import com.skill.kairo.application.usecase.ProcessSubscriptionUseCase;
 import com.skill.kairo.domain.repository.GamificationRepository;
 import com.skill.kairo.domain.repository.SubscriptionRepository;
 
+import java.util.UUID;
+
 public class ProcessSubscriptionService implements ProcessSubscriptionUseCase {
 
     private final PaymentPort paymentPort;
@@ -61,6 +63,23 @@ public class ProcessSubscriptionService implements ProcessSubscriptionUseCase {
                                 subscriptionRepository.save(sub);
                             });
                 }
+            }
+            case "checkout.session.completed" -> {
+                if (event.kairoUserId() == null) return;  // evento sem metadata → ignorar
+                UUID userId = UUID.fromString(event.kairoUserId());
+                subscriptionRepository.findByUserId(userId).ifPresent(sub -> {
+                    sub.upgradeToPremium(
+                        event.stripeCustomerId(),       // pode ser null; corrigido por subscription.created
+                        event.stripeSubscriptionId(),
+                        null                            // currentPeriodEnd chega via invoice.payment_succeeded
+                    );
+                    subscriptionRepository.save(sub);
+                });
+                gamificationRepository.findByUserId(userId).ifPresent(profile -> {
+                    profile.enableUnlimitedGenerations();
+                    profile.restoreLives();
+                    gamificationRepository.save(profile);
+                });
             }
             default -> {} // Eventos não tratados são ignorados
         }

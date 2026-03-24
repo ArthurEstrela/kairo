@@ -10,5 +10,6 @@ public record StripeSubscriptionEvent(
         String eventType,
         String stripeCustomerId,
         String stripeSubscriptionId,
-        Instant currentPeriodEnd
+        Instant currentPeriodEnd,
+        String kairoUserId          // nullable — populated only for checkout.session.completed
 ) {}
