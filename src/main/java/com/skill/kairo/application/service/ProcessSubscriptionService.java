@@ -41,6 +41,7 @@ public class ProcessSubscriptionService implements ProcessSubscriptionUseCase {
 
                 // Restaurar vidas ao fazer upgrade para Premium
                 gamificationRepository.findByUserId(subscription.getUserId()).ifPresent(profile -> {
+                    profile.enableUnlimitedGenerations();
                     profile.restoreLives();
                     gamificationRepository.save(profile);
                 });
