@@ -4,8 +4,10 @@ import com.skill.kairo.domain.event.DomainEvent;
 import com.skill.kairo.domain.event.LeaguePromotedEvent;
 import com.skill.kairo.domain.event.LifeLostEvent;
 import com.skill.kairo.domain.event.XpAwardedEvent;
+import com.skill.kairo.domain.exception.TrackGenerationLimitException;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -22,15 +24,17 @@ public class GamificationProfile {
     private LeagueTier tier;
     private Instant lastLifeLostAt;
 
+    private Integer availableTrackGenerations; // null = unlimited (Premium)
+    private Instant quotaResetDate;
+
     private final List<DomainEvent> domainEvents = new ArrayList<>();
 
-    // Limiares de XP para promoção de liga
     private static final int XP_SILVER   = 500;
     private static final int XP_GOLD     = 1_500;
     private static final int XP_PLATINUM = 3_500;
     private static final int XP_DIAMOND  = 7_500;
 
-    // Construtor para novo perfil (onboarding)
+    // Construtor para novo perfil (onboarding) — FREEMIUM começa com 3 gerações
     public GamificationProfile(UUID id, UUID userId) {
         this.id = id;
         this.userId = userId;
@@ -39,11 +43,14 @@ public class GamificationProfile {
         this.streak = new Streak(0);
         this.tier = LeagueTier.BRONZE;
         this.lastLifeLostAt = null;
+        this.availableTrackGenerations = 3;
+        this.quotaResetDate = Instant.now().plus(30, ChronoUnit.DAYS);
     }
 
-    // Construtor de reconstrução (usado pelo Repository ao buscar do banco)
+    // Construtor de reconstrução (10 parâmetros — usado pelo Repository)
     public GamificationProfile(UUID id, UUID userId, int currentXp, int currentLives, int maxLives,
-                                int currentStreak, LeagueTier tier, Instant lastLifeLostAt) {
+                                int currentStreak, LeagueTier tier, Instant lastLifeLostAt,
+                                Integer availableTrackGenerations, Instant quotaResetDate) {
         this.id = id;
         this.userId = userId;
         this.xp = new ExperiencePoints(currentXp);
@@ -51,6 +58,8 @@ public class GamificationProfile {
         this.streak = new Streak(currentStreak);
         this.tier = tier;
         this.lastLifeLostAt = lastLifeLostAt;
+        this.availableTrackGenerations = availableTrackGenerations;
+        this.quotaResetDate = quotaResetDate;
     }
 
     // --- COMPORTAMENTOS DE NEGÓCIO ---
@@ -72,10 +81,6 @@ public class GamificationProfile {
         this.streak = this.streak.increment();
     }
 
-    /**
-     * Restaura uma vida. Chamado pelo scheduler a cada 4 horas.
-     * Devolve true se uma vida foi restaurada.
-     */
     public boolean restoreOneLife() {
         if (lives.current() >= lives.max()) return false;
         this.lives = new Lives(lives.current() + 1, lives.max());
@@ -85,13 +90,39 @@ public class GamificationProfile {
         return true;
     }
 
-    /**
-     * Restaura todas as vidas imediatamente (upgrade para Premium).
-     */
     public void restoreLives() {
         this.lives = this.lives.restoreFull();
         this.lastLifeLostAt = null;
     }
+
+    // --- QUOTA DE GERAÇÃO DE TRILHAS ---
+
+    /** true se pode gerar (null = Premium ilimitado, ou count > 0) */
+    public boolean hasTrackQuota() {
+        return availableTrackGenerations == null || availableTrackGenerations > 0;
+    }
+
+    /** Decrementa 1 geração. Throws TrackGenerationLimitException se esgotado. */
+    public void consumeTrackGeneration() {
+        if (availableTrackGenerations != null) {
+            if (availableTrackGenerations <= 0) throw new TrackGenerationLimitException();
+            this.availableTrackGenerations--;
+        }
+    }
+
+    /** Premium: quota infinita. */
+    public void enableUnlimitedGenerations() {
+        this.availableTrackGenerations = null;
+        this.quotaResetDate = null;
+    }
+
+    /** Scheduler: repõe quota mensal. */
+    public void resetQuota(int amount, Instant nextResetDate) {
+        this.availableTrackGenerations = amount;
+        this.quotaResetDate = nextResetDate;
+    }
+
+    // --- PROMOÇÃO DE LIGA ---
 
     private void checkLeaguePromotion() {
         LeagueTier newTier = calculateTier(this.xp.value());
@@ -108,8 +139,6 @@ public class GamificationProfile {
         if (totalXp >= XP_SILVER)   return LeagueTier.SILVER;
         return LeagueTier.BRONZE;
     }
-
-    // --- CONTROLE DE EVENTOS (DDD PURO) ---
 
     private void registerEvent(DomainEvent event) {
         this.domainEvents.add(event);
@@ -131,4 +160,6 @@ public class GamificationProfile {
     public int getCurrentStreak() { return streak.count(); }
     public LeagueTier getTier() { return tier; }
     public Instant getLastLifeLostAt() { return lastLifeLostAt; }
+    public Integer getAvailableTrackGenerations() { return availableTrackGenerations; }
+    public Instant getQuotaResetDate() { return quotaResetDate; }
 }

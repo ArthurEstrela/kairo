@@ -262,4 +262,73 @@ class GamificationProfileTest {
             assertThat(profile.getCurrentLives()).isEqualTo(5);
         }
     }
+
+    // ─── QUOTA DE TRILHAS ──────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("track generation quota")
+    class TrackQuotaTests {
+
+        @Test
+        @DisplayName("novo perfil começa com 3 gerações disponíveis")
+        void newProfileHas3Generations() {
+            assertThat(profile.getAvailableTrackGenerations()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("hasTrackQuota retorna true quando há gerações")
+        void hasQuotaWhenPositive() {
+            assertThat(profile.hasTrackQuota()).isTrue();
+        }
+
+        @Test
+        @DisplayName("consumeTrackGeneration decrementa em 1")
+        void consumeDecrementsBy1() {
+            profile.consumeTrackGeneration();
+            assertThat(profile.getAvailableTrackGenerations()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("consumeTrackGeneration lança TrackGenerationLimitException quando esgotado")
+        void consumeThrowsWhenExhausted() {
+            profile.consumeTrackGeneration();
+            profile.consumeTrackGeneration();
+            profile.consumeTrackGeneration();
+            assertThatThrownBy(profile::consumeTrackGeneration)
+                .isInstanceOf(com.skill.kairo.domain.exception.TrackGenerationLimitException.class);
+        }
+
+        @Test
+        @DisplayName("enableUnlimitedGenerations define null (Premium ilimitado)")
+        void enableUnlimitedSetsNull() {
+            profile.enableUnlimitedGenerations();
+            assertThat(profile.getAvailableTrackGenerations()).isNull();
+        }
+
+        @Test
+        @DisplayName("hasTrackQuota retorna true quando null (Premium)")
+        void hasQuotaWhenNull() {
+            profile.enableUnlimitedGenerations();
+            assertThat(profile.hasTrackQuota()).isTrue();
+        }
+
+        @Test
+        @DisplayName("consumeTrackGeneration não decrementa quando null (Premium)")
+        void consumeDoesNotDecrementWhenNull() {
+            profile.enableUnlimitedGenerations();
+            profile.consumeTrackGeneration(); // should not throw
+            assertThat(profile.getAvailableTrackGenerations()).isNull();
+        }
+
+        @Test
+        @DisplayName("resetQuota repõe gerações e define próxima data de reset")
+        void resetQuotaRestoresCount() {
+            profile.consumeTrackGeneration();
+            profile.consumeTrackGeneration();
+            java.time.Instant nextReset = java.time.Instant.now().plus(30, java.time.temporal.ChronoUnit.DAYS);
+            profile.resetQuota(3, nextReset);
+            assertThat(profile.getAvailableTrackGenerations()).isEqualTo(3);
+            assertThat(profile.getQuotaResetDate()).isEqualTo(nextReset);
+        }
+    }
 }

@@ -17,7 +17,9 @@ public class GamificationMapper {
                 entity.getMaxLives(),
                 entity.getCurrentStreak(),
                 LeagueTier.valueOf(entity.getTier()),
-                entity.getLastLifeLostAt()
+                entity.getLastLifeLostAt(),
+                null,  // availableTrackGenerations — to be mapped in Task 5
+                null   // quotaResetDate — to be mapped in Task 5
         );
     }
 
