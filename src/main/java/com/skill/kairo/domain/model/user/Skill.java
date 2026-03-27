@@ -12,6 +12,6 @@ public record Skill(
 ) {
     public Skill {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("Skill name cannot be blank");
-        if (difficultyLevel < 1 || difficultyLevel > 5) throw new IllegalArgumentException("Difficulty must be 1–5");
+        if (difficultyLevel < 0 || difficultyLevel > 4) throw new IllegalArgumentException("Difficulty must be 0–4");
     }
 }

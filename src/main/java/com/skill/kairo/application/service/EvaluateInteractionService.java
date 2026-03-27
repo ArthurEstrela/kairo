@@ -15,6 +15,8 @@ import com.skill.kairo.domain.model.gamification.GamificationProfile;
 import com.skill.kairo.domain.repository.ChallengeRepository;
 import com.skill.kairo.domain.repository.GamificationRepository;
 import com.skill.kairo.domain.repository.InteractionRepository;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,18 +29,21 @@ public class EvaluateInteractionService implements EvaluateInteractionUseCase {
     private final InteractionRepository interactionRepository;
     private final AIPort aiPort;
     private final EventPublisherPort eventPublisher;
+    private final TransactionTemplate tx;
 
     public EvaluateInteractionService(
             ChallengeRepository challengeRepository,
             GamificationRepository gamificationRepository,
             InteractionRepository interactionRepository,
             AIPort aiPort,
-            EventPublisherPort eventPublisher) {
+            EventPublisherPort eventPublisher,
+            PlatformTransactionManager txManager) {
         this.challengeRepository = challengeRepository;
         this.gamificationRepository = gamificationRepository;
         this.interactionRepository = interactionRepository;
         this.aiPort = aiPort;
         this.eventPublisher = eventPublisher;
+        this.tx = new TransactionTemplate(txManager);
     }
 
     @Override
@@ -63,17 +68,7 @@ public class EvaluateInteractionService implements EvaluateInteractionUseCase {
                 List.of("", command.userInput())); // index 0 = AI (empty opening), index 1 = user input
         Score score = new Score(interactionScore.score());
 
-        // 4. Registar o histórico da interação com a resposta REAL da IA
-        interactionRepository.save(new Interaction(
-                UUID.randomUUID(),
-                profile.getUserId(),
-                challenge.getId(),
-                command.userInput(),
-                aiResponse,
-                score
-        ));
-
-        // 5. Aplicar a Regra de Negócio de Gamificação
+        // 4. Aplicar a Regra de Negócio de Gamificação
         String feedback;
         if (score.value() >= 70) {
             profile.awardXp(challenge.getXpReward());
@@ -84,15 +79,26 @@ public class EvaluateInteractionService implements EvaluateInteractionUseCase {
             feedback = "A pontuação não foi suficiente. Tenta novamente!";
         }
 
-        // 6. Guardar o novo estado
-        gamificationRepository.save(profile);
+        // 5. Guardar interação + perfil atomicamente
+        final String finalAiResponse = aiResponse;
+        tx.executeWithoutResult(status -> {
+            interactionRepository.save(new Interaction(
+                    UUID.randomUUID(),
+                    profile.getUserId(),
+                    challenge.getId(),
+                    command.userInput(),
+                    finalAiResponse,
+                    score
+            ));
+            gamificationRepository.save(profile);
+        });
 
-        // 7. Publicar todos os Eventos de Domínio
+        // 6. Publicar todos os Eventos de Domínio (após commit)
         List<DomainEvent> events = new ArrayList<>(profile.pullDomainEvents());
         events.add(new ChallengeCompletedEvent(profile.getUserId(), challenge.getId(), score.value()));
         events.forEach(eventPublisher::publish);
 
-        // 8. Devolver a resposta final
+        // 7. Devolver a resposta final
         return new InteractionResultResponse(
                 score.value(),
                 profile.getCurrentXp(),

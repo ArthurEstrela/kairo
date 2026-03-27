@@ -7,11 +7,13 @@ import com.skill.kairo.domain.model.challenge.config.QuizConfig;
 import com.skill.kairo.domain.model.challenge.config.RoleplayConfig;
 import com.skill.kairo.domain.repository.ChallengeRepository;
 import com.skill.kairo.domain.repository.SkillRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
@@ -40,7 +42,7 @@ public class SkillController {
     @GetMapping("/{skillId}/challenges")
     public ResponseEntity<List<ChallengeResponse>> getChallengesBySkill(@PathVariable UUID skillId) {
         skillRepository.findById(skillId)
-                .orElseThrow(() -> new IllegalArgumentException("Habilidade não encontrada."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Habilidade não encontrada."));
 
         List<ChallengeResponse> challenges = challengeRepository.findBySkillId(skillId)
                 .stream()

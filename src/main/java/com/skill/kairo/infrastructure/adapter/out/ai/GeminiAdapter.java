@@ -30,7 +30,7 @@ import java.util.function.Consumer;
 public class GeminiAdapter implements AIPort {
 
     private static final String BASE_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash";
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash";
 
     private final String apiKey;
     private final ObjectMapper objectMapper;

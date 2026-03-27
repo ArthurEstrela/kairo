@@ -245,33 +245,36 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
         final String historyJson = historyJsonTmp;
 
-        // Wrap prevBestScore read, interaction save, XP decision and gamification save
+        // Wrap prevBestScore read, interaction save, XP/streak decision and gamification save
         // in a single transaction to prevent double-XP race conditions.
         int[] resultHolder = transactionTemplate.execute(status -> {
             int prevBestScore = progressRepository
                 .findByUserIdAndChallengeId(userId, rs.challengeId)
                 .map(ChallengeProgress::bestScore).orElse(0);
 
-            int livesRemaining;
-            if (score < 60) {
-                livesRemaining = gamificationRepository.deductLifeAndReturn(userId);
-            } else {
-                livesRemaining = gamificationRepository.getLives(userId);
-            }
+            var profile = gamificationRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalStateException("Gamification profile not found"));
 
             interactionRepository.save(new Interaction(
                 interactionId, userId, rs.challengeId, lastUserTurn, historyJson, new Score(score)
             ));
 
-            int xpAwarded = (score >= 70 && prevBestScore < 70) ? challenge.getXpReward() : 0;
-            if (xpAwarded > 0) {
-                gamificationRepository.findByUserId(userId).ifPresent(profile -> {
-                    profile.awardXp(xpAwarded);
-                    gamificationRepository.save(profile);
-                });
+            int xpAwarded;
+            if (score >= 70) {
+                profile.maintainStreak();
+                if (prevBestScore < 70) {
+                    profile.awardXp(challenge.getXpReward());
+                    xpAwarded = challenge.getXpReward();
+                } else {
+                    xpAwarded = 0;
+                }
+            } else {
+                profile.failChallenge();
+                xpAwarded = 0;
             }
+            gamificationRepository.save(profile);
 
-            return new int[]{livesRemaining, xpAwarded};
+            return new int[]{profile.getCurrentLives(), xpAwarded};
         });
 
         // WebSocket IO must happen outside the transaction

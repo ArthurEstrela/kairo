@@ -6,8 +6,10 @@ import com.skill.kairo.infrastructure.adapter.out.persistence.jpa.ChallengeEntit
 import com.skill.kairo.infrastructure.adapter.out.persistence.jpa.InteractionEntity;
 import com.skill.kairo.infrastructure.adapter.out.persistence.jpa.SpringDataChallengeRepository;
 import com.skill.kairo.infrastructure.adapter.out.persistence.jpa.SpringDataInteractionRepository;
+import com.skill.kairo.infrastructure.security.KairoPrincipal;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
@@ -31,9 +33,11 @@ public class UserStatsController {
         this.challengeRepo = challengeRepo;
     }
 
-    @GetMapping("/{userId}/stats")
-    public ResponseEntity<UserStatsResponse> getStats(@PathVariable UUID userId) {
-        long total = interactionRepo.countByUserId(userId);
+    @GetMapping("/me/stats")
+    public ResponseEntity<UserStatsResponse> getStats(
+            @AuthenticationPrincipal KairoPrincipal principal) {
+        UUID userId = principal.userId();
+        long total = interactionRepo.countDistinctCompletedChallenges(userId, 60);
         Instant sevenDaysAgo = Instant.now().minus(7, ChronoUnit.DAYS);
         List<InteractionEntity> weeklyInteractions = interactionRepo.findByUserIdAndCreatedAtAfter(userId, sevenDaysAgo);
 
@@ -51,8 +55,10 @@ public class UserStatsController {
         return ResponseEntity.ok(new UserStatsResponse(total, weeklyActivity));
     }
 
-    @GetMapping("/{userId}/recent-activity")
-    public ResponseEntity<List<RecentActivityItem>> getRecentActivity(@PathVariable UUID userId) {
+    @GetMapping("/me/recent-activity")
+    public ResponseEntity<List<RecentActivityItem>> getRecentActivity(
+            @AuthenticationPrincipal KairoPrincipal principal) {
+        UUID userId = principal.userId();
         List<InteractionEntity> interactions = interactionRepo
                 .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, 5));
 

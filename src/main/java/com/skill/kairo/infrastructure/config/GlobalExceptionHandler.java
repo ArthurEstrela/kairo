@@ -18,6 +18,8 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     // 0. Erros de validação de @Valid nos @RequestBody (campo a campo)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
@@ -87,9 +89,8 @@ public class GlobalExceptionHandler {
     // 5. Fallback de Segurança (Se algo inesperado rebentar, não expomos o código ao utilizador)
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGenericException(Exception ex) {
-        // Num cenário real, enviaríamos o 'ex' para o Sentry ou Datadog aqui
-        ex.printStackTrace(); // Apenas para debug local
-        
+        log.error("Unhandled exception: {}", ex.getMessage(), ex);
+
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Ocorreu um erro interno no servidor.");
         problemDetail.setTitle("Erro Interno");
         problemDetail.setProperty("timestamp", Instant.now());

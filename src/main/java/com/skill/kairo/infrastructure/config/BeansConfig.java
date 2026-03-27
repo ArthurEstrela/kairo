@@ -50,15 +50,21 @@ public class BeansConfig {
     private String frontendUrl;
 
     @Bean
+    ObjectMapper objectMapper() {
+        return new ObjectMapper().findAndRegisterModules();
+    }
+
+    @Bean
     EvaluateInteractionUseCase evaluateInteractionUseCase(
             ChallengeRepository challengeRepository,
             GamificationRepository gamificationRepository,
             InteractionRepository interactionRepository,
             AIPort aiPort,
-            EventPublisherPort eventPublisherPort) {
+            EventPublisherPort eventPublisherPort,
+            PlatformTransactionManager txManager) {
         return new EvaluateInteractionService(
                 challengeRepository, gamificationRepository,
-                interactionRepository, aiPort, eventPublisherPort);
+                interactionRepository, aiPort, eventPublisherPort, txManager);
     }
 
     @Bean
@@ -67,10 +73,11 @@ public class BeansConfig {
             GamificationRepository gamificationRepository,
             SubscriptionRepository subscriptionRepository,
             JwtPort jwtPort,
-            PasswordEncoderPort passwordEncoderPort) {
+            PasswordEncoderPort passwordEncoderPort,
+            PlatformTransactionManager txManager) {
         return new RegisterService(
                 userRepository, gamificationRepository,
-                subscriptionRepository, jwtPort, passwordEncoderPort);
+                subscriptionRepository, jwtPort, passwordEncoderPort, txManager);
     }
 
     @Bean
